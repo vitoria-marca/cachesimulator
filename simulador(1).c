@@ -1,3 +1,7 @@
+// SIMULADOR DE CACHE 
+// ARQUITETURA E ORGANIZAÇÃO DE COMPUTADORES II
+// Larissa Gabriela e Vitória Santa Lucia
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,14 +24,14 @@ typedef struct {
 CacheBlock cache[MAX_SETS][MAX_ASSOC];
 
 
-    // Variáveis para estatísticas
-    long int total_acessos = 0;
-    long int hits = 0;
-    long int miss_compulsorio = 0;
-    long int miss_total = 0;
-    long int *visitado = NULL; // vetor auxiliar para verificar misses compulsórios
-    long int miss_conflito = 0;
-    long int miss_capacidade = 0;
+// Variáveis para estatísticas
+long int total_acessos = 0;
+long int hits = 0;
+long int miss_compulsorio = 0;
+long int miss_total = 0;
+long int *visitado = NULL; // vetor auxiliar para verificar misses compulsórios
+long int miss_conflito = 0;
+long int miss_capacidade = 0;
 
 
 // Calcula log base 2 inteiro (pra bits)
