@@ -19,14 +19,16 @@ typedef struct {
 // Cache: uma matriz [nsets][associatividade]
 CacheBlock cache[MAX_SETS][MAX_ASSOC];
 
-// Variáveis para estatísticas
-long int total_acessos = 0;
-long int hits = 0;
-long int miss_compulsorio = 0;
-long int miss_total = 0;
-long int *visitado; // vetor auxiliar para verificar misses compulsórios
-long int miss_conflito = 0;
-long int miss_capacidade = 0;
+
+    // Variáveis para estatísticas
+    long int total_acessos = 0;
+    long int hits = 0;
+    long int miss_compulsorio = 0;
+    long int miss_total = 0;
+    long int *visitado = NULL; // vetor auxiliar para verificar misses compulsórios
+    long int miss_conflito = 0;
+    long int miss_capacidade = 0;
+
 
 // Calcula log base 2 inteiro (pra bits)
 int log2int(int x) {
@@ -34,7 +36,7 @@ int log2int(int x) {
 }
 
 // Inicializa toda a cache (inicio zerado)
-void inicializar_cache() {
+void inicializar_cache(int nsets, int assoc) {
     for (int i = 0; i < nsets; i++) {
         for (int j = 0; j < assoc; j++) {
             cache[i][j].valid = 0;
@@ -43,8 +45,12 @@ void inicializar_cache() {
         }
     }
 
-    // Aloca vetor para verificar quais tags j� apareceram (miss compuls�rio)
+    // aloca vetor para verificar quais tags já apareceram (miss compulsório)
     visitado = (int*)calloc(1 << 25, sizeof(int)); // 25 bits de tag (32 - offset - �ndice)
+    if (!visitado){
+        printf("Erro ao alocar memória");
+        return 1;
+    }
 }
 
 //Função para processar o nome do arquivo vindo do terminal e abri-lo em modo 
@@ -52,21 +58,70 @@ void inicializar_cache() {
 FILE *processar_arquivo(char *arquivo_de_entrada){
     FILE *fp = fopen(arquivo_de_entrada, "rb");
 
-    if (fp == NULL){
+    if (!fp){
         perror("Erro ao abrir o arquivo");
-        return NULL
+        return NULL;
     }
 
     return fp;
 }
 
+void simular_acesso_cache(uint32_t endereco, int nsets, int bsize, int assoc, char *substituicao) {
+    total_acessos++;
+    
+    // calculo dos bits de offset, índice e tag
+    int offset_bits = log2int(bsize);
+    int index_bits = log2int(nsets);
+    int tag_bits = 32 - offset_bits - index_bits;
+    
+    // Extrai o índice e a tag do endereço
+    uint32_t index = (endereco >> offset_bits) & (nsets - 1);
+    uint32_t tag = endereco >> (offset_bits + index_bits);
+
+    if (assoc == 1) //se mapeamento direto
+    {
+        if (cache[index][0].valid && cache[index][0].tag == tag){
+            hits ++;
+        } else {
+            miss(index, tag, 0, substituicao);
+        }
+    }
+    // Verifica se é hit (mapeamento direto usa apenas a primeira via - índice 0)
+    if (cache[index][0].valid && cache[index][0].tag == tag) {
+        hits++;
+    } else {
+        miss_total++;
+        
+        // Verifica se é miss compulsório (primeiro acesso a essa tag)
+        if (visitado[tag] == 0) {
+            miss_compulsorio++;
+            visitado[tag] = 1;
+        }
+        
+        // Atualiza a cache (mapeamento direto sobrescreve o bloco diretamente)
+        cache[index][0].valid = 1;
+        cache[index][0].tag = tag;
+    }
+}
+
+void miss (int index, uint32_t tag, int assoc, char *substituicao){
+    miss_total ++;
+
+    if (visitado[tag] == 0){
+        miss_compulsorio++;
+        visitado[tag] = 1;
+    } else if (assoc == 1){
+        miss_conflito++;
+    }
+}
+
 int main (int argc, char *argv[]){
     
-    //se estgiver faltando parâmetros, o programa fecha
+    //se estiver faltando parâmetros, o programa fecha
     if (argc != 7){
 		printf("Numero de argumentos incorreto. Utilize:\n");
 		printf("./cache_simulator <nsets> <bsize> <assoc> <substituição> <flag_saida> arquivo_de_entrada\n");
-		exit(EXIT_FAILURE);
+		return 1;
 	}
 
     // Parametros vindos da linha de comando
@@ -77,6 +132,16 @@ int main (int argc, char *argv[]){
     int flag_saida = argv[5];
     char* arquivo_entrada = argv[6];
 
+    // verificações quanto ao tamanho da cache
+    if (nsets > MAX_SETS) {
+        printf("Número de conjuntos excede o máximo permitido (%d)\n", MAX_SETS);
+        return 1;
+    }
+    if (assoc > MAX_ASSOC) {
+        printf("Associatividade excede o máximo permitido (%d)\n", MAX_ASSOC);
+        return 1;
+    }
+
     // Confirmacao de dados
     printf("nsets = %d\n", nsets);
 	printf("bsize = %d\n", bsize);
@@ -86,6 +151,8 @@ int main (int argc, char *argv[]){
 	printf("arquivo = %s\n", arquivo_entrada);
 
     FILE *arquivo_bin = processar_arquivo(arquivo_entrada);
+
+    inicializar_cache(nsets, assoc);
 
 
 }
