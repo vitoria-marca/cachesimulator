@@ -114,9 +114,15 @@ void miss (int index, uint32_t tag, int assoc, char *substituicao){
     if (visitado[tag] == 0){
         miss_compulsorio++;
         visitado[tag] = 1;
-    } else if (assoc == 1){
-        miss_conflito++;
+        return;
     }
+     
+    if (assoc < (MAX_SETS * MAX_ASSOC)) {
+        miss_conflito++;
+    } else {
+        miss_capacidade++;
+    }
+
 }
 
 int main (int argc, char *argv[]){
