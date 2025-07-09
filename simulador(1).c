@@ -128,13 +128,16 @@ int main (int argc, char *argv[]){
 		return 1;
 	}
 
-    // Parametros vindos da linha de comando
-    int nsets = argv[1];
-    int bsize = argv[2];
-    int assoc = argv[3];
+    // Inicialização da função aleatória 
+    srand(time(NULL)); 
+
+    // Parâmetros vindos da linha de comando
+    int nsets = atoi(argv[1]);
+    int bsize = atoi(argv[2]);
+    int assoc = atoi(argv[3]);
     char *substituicao = argv[4];
-    int flag_saida = argv[5];
-    char* arquivo_entrada = argv[6];
+    int flag_saida = atoi(argv[5]);
+    char* arquivo_entrada = argv[6];   
 
     // verificações quanto ao tamanho da cache
     if (nsets > MAX_SETS) {
