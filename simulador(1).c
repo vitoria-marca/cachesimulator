@@ -123,6 +123,35 @@ void miss (int index, uint32_t tag, int assoc, char *substituicao){
         miss_capacidade++;
     }
 
+    int substituir_via = -1;
+
+    for (int i = 0; i < assoc; i++){
+        if (!cache[index][i].valid){
+            substituir_via = i;
+            break;
+        }
+    }
+
+    if (substituir_via = -1){
+        if (substituicao[0] == 'R'){
+            substituir_via = rand() % assoc;
+        } else if (substituicao[0] == 'F' || substituicao[0] == 'L') {
+            int min = cache[index][0].lru_counter;
+            substituir_via = 0;
+            for (int i = 0; i < assoc; i++){
+                if (cache[index][i].lru_counter < min){
+                    min = cache[index][i].lru_counter;
+                    substituir_via = i;
+                }
+            }
+        }
+
+    }
+    
+    cache[index][substituir_via].valid = 1;
+    cache[index][substituir_via].tag = tag;
+    cache[index][substituir_via].lru_counter = total_acessos;
+
 }
 
 int main (int argc, char *argv[]){
