@@ -76,35 +76,25 @@ void simular_acesso_cache(uint32_t endereco, int nsets, int bsize, int assoc, ch
     // calculo dos bits de offset, índice e tag
     int offset_bits = log2int(bsize);
     int index_bits = log2int(nsets);
-    int tag_bits = 32 - offset_bits - index_bits;
-    
-    // Extrai o índice e a tag do endereço
     uint32_t index = (endereco >> offset_bits) & (nsets - 1);
     uint32_t tag = endereco >> (offset_bits + index_bits);
 
-    if (assoc == 1) //se mapeamento direto
-    {
-        if (cache[index][0].valid && cache[index][0].tag == tag){
+    int hit = 0;
+
+    for (int i = 0; i < assoc; i++){
+        if (cache[index][i].valid && cache[index][i].tag == tag){
             hits ++;
-        } else {
-            miss(index, tag, 0, substituicao);
+            hit = 1;
+
+            if (substituicao[0] = 'L'){
+                cache[index][i].lru_counter = total_acessos;
+            }
+            break;
         }
     }
-    // Verifica se é hit (mapeamento direto usa apenas a primeira via - índice 0)
-    if (cache[index][0].valid && cache[index][0].tag == tag) {
-        hits++;
-    } else {
-        miss_total++;
-        
-        // Verifica se é miss compulsório (primeiro acesso a essa tag)
-        if (visitado[tag] == 0) {
-            miss_compulsorio++;
-            visitado[tag] = 1;
-        }
-        
-        // Atualiza a cache (mapeamento direto sobrescreve o bloco diretamente)
-        cache[index][0].valid = 1;
-        cache[index][0].tag = tag;
+
+    if (!hit){
+        miss(index, tag, assoc, substituicao);
     }
 }
 
@@ -147,7 +137,7 @@ void miss (int index, uint32_t tag, int assoc, char *substituicao){
         }
 
     }
-    
+
     cache[index][substituir_via].valid = 1;
     cache[index][substituir_via].tag = tag;
     cache[index][substituir_via].lru_counter = total_acessos;
