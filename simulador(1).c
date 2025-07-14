@@ -59,7 +59,6 @@ int log2int(int x) {
     return (int)(log(x) / log(2));
 }
 
-// Inicializa toda a cache (inicio zerado)
 void inicializar_cache(int nsets, int assoc) {
     for (int i = 0; i < nsets; i++) {
         for (int j = 0; j < assoc; j++) {
@@ -69,12 +68,7 @@ void inicializar_cache(int nsets, int assoc) {
         }
     }
 
-    // aloca vetor para verificar quais tags já apareceram (miss compulsório)
-    visitado = (int*)calloc(1 << 25, sizeof(int)); // 25 bits de tag (32 - offset - �ndice)
-    if (!visitado){
-        printf("Erro ao alocar memória");
-        EXIT_FAILURE;
-    }
+    blocos_validos = 0;
 }
 
 //Função para processar o nome do arquivo vindo do terminal e abri-lo em modo 
