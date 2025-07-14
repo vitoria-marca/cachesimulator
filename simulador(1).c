@@ -23,6 +23,14 @@ typedef struct {
 // Cache: uma matriz [nsets][associatividade]
 CacheBlock cache[MAX_SETS][MAX_ASSOC];
 
+typedef struct {
+    uint32_t tags;
+    int size;
+    int capacity;
+} VisitSet;
+
+VisitSet set_visitado;
+
 
 // Variáveis para estatísticas
 long int total_acessos = 0;
@@ -36,6 +44,15 @@ long int blocos_validos = 0;
 
 void miss (int index, uint32_t tag, int assoc, char *substituicao);
 
+void inicializar_visitado(){
+    set_visitado.tags = (uint32_t*)malloc(100 * sizeof(uint32_t));
+    set_visitado.capacity = 100;
+    set_visitado.size = 0;
+}
+
+void liberar_visitado(){
+    free(set_visitado.tags);
+}
 
 // Calcula log base 2 inteiro (pra bits)
 int log2int(int x) {
