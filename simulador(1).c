@@ -33,6 +33,8 @@ long int *visitado = NULL; // vetor auxiliar para verificar misses compulsórios
 long int miss_conflito = 0;
 long int miss_capacidade = 0;
 
+void miss (int index, uint32_t tag, int assoc, char *substituicao);
+
 
 // Calcula log base 2 inteiro (pra bits)
 int log2int(int x) {
@@ -53,7 +55,7 @@ void inicializar_cache(int nsets, int assoc) {
     visitado = (int*)calloc(1 << 25, sizeof(int)); // 25 bits de tag (32 - offset - �ndice)
     if (!visitado){
         printf("Erro ao alocar memória");
-        return 1;
+        EXIT_FAILURE;
     }
 }
 
@@ -86,7 +88,7 @@ void simular_acesso_cache(uint32_t endereco, int nsets, int bsize, int assoc, ch
             hits ++;
             hit = 1;
 
-            if (substituicao[0] = 'L'){
+            if (substituicao[0] == 'L'){
                 cache[index][i].lru_counter = total_acessos;
             }
             break;
@@ -122,7 +124,7 @@ void miss (int index, uint32_t tag, int assoc, char *substituicao){
         }
     }
 
-    if (substituir_via = -1){
+    if (substituir_via == -1){
         if (substituicao[0] == 'R'){
             substituir_via = rand() % assoc;
         } else if (substituicao[0] == 'F' || substituicao[0] == 'L') {
