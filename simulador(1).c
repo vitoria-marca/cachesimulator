@@ -24,7 +24,7 @@ typedef struct {
 CacheBlock cache[MAX_SETS][MAX_ASSOC];
 
 typedef struct {
-    uint32_t tags;
+    uint32_t *tags;
     int size;
     int capacity;
 } VisitSet;
@@ -42,7 +42,7 @@ long int miss_conflito = 0;
 long int miss_capacidade = 0;
 long int blocos_validos = 0;
 
-void miss (int index, uint32_t tag, int assoc, char *substituicao);
+void miss (int index, uint32_t tag, int nsets, int assoc, char *substituicao);
 
 void inicializar_visitado(){
     set_visitado.tags = (uint32_t*)malloc(100 * sizeof(uint32_t));
@@ -114,23 +114,35 @@ void simular_acesso_cache(uint32_t endereco, int nsets, int bsize, int assoc, ch
     }
 
     if (!hit){
-        miss(index, tag, assoc, substituicao);
+        miss(index, tag, nsets, assoc, substituicao);
     }
 }
 
-void miss (int index, uint32_t tag, int assoc, char *substituicao){
+void miss (int index, uint32_t tag, int nsets, int assoc, char *substituicao){
     miss_total ++;
+    int encontrado = 0;
 
-    if (visitado[tag] == 0){
-        miss_compulsorio++;
-        visitado[tag] = 1;
-        return;
+    for (int i = 0; i < set_visitado.size; i++){
+        if (set_visitado.tags[i] == tag){
+            encontrado = 1;
+            break;
+        }
     }
-     
-    if (assoc < (MAX_SETS * MAX_ASSOC)) {
-        miss_conflito++;
+
+    if (!encontrado){
+        miss_compulsorio++;
+        if (set_visitado.size == set_visitado.capacity){
+            set_visitado.capacity *= 2;
+            set_visitado.tags = realloc (set_visitado.tags,
+                                        set_visitado.capacity * sizeof(uint32_t));
+        }
+        set_visitado.tags[set_visitado.size++] = tag;
     } else {
-        miss_capacidade++;
+        if (blocos_validos == nsets * assoc){
+            miss_capacidade ++;
+        } else {
+            miss_conflito++;
+        }
     }
 
     int substituir_via = -1;
@@ -145,7 +157,7 @@ void miss (int index, uint32_t tag, int assoc, char *substituicao){
     if (substituir_via == -1){
         if (substituicao[0] == 'R'){
             substituir_via = rand() % assoc;
-        } else if (substituicao[0] == 'F' || substituicao[0] == 'L') {
+        } else {
             int min = cache[index][0].lru_counter;
             substituir_via = 0;
             for (int i = 0; i < assoc; i++){
@@ -155,7 +167,11 @@ void miss (int index, uint32_t tag, int assoc, char *substituicao){
                 }
             }
         }
+    }
 
+    int era_valido = cache[index][substituir_via].valid;
+    if (!era_valido){
+        blocos_validos++;
     }
 
     cache[index][substituir_via].valid = 1;
