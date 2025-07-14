@@ -32,6 +32,7 @@ long int miss_total = 0;
 long int *visitado = NULL; // vetor auxiliar para verificar misses compulsórios
 long int miss_conflito = 0;
 long int miss_capacidade = 0;
+long int blocos_validos = 0;
 
 void miss (int index, uint32_t tag, int assoc, char *substituicao);
 
