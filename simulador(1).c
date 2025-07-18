@@ -51,13 +51,22 @@ FILE* processar_arquivo(char *f);
 void simular_acesso_cache(uint32_t raw, int nsets, int bsize, int assoc, char *sub);
 void imprimir_estatisticas(int flag);
 
-//Corpo de funções
+//Corpo de funções//
+///////////////////
 int is_potencia2(int x) {
     return x && !(x & (x - 1)); //operação bit a bit
 }
+// Calcula log base 2 inteiro (pra bits)
+int log2int(int x) {
+    int r=0; 
+    while (x>1) { 
+        x>>=1; r++; 
+    } 
+    return r; 
+}
 
 void inicializar_visitado(){
-    set_visitado.tags = (uint32_t*)malloc(100 * sizeof(uint32_t));
+    set_visitado.tags = malloc(100 * sizeof(uint32_t));
     set_visitado.capacity = 100;
     set_visitado.size = 0;
 }
@@ -66,17 +75,14 @@ void liberar_visitado(){
     free(set_visitado.tags);
 }
 
-// Calcula log base 2 inteiro (pra bits)
-int log2int(int x) {
-    return (int)(log(x) / log(2));
-}
-
 void inicializar_cache(int nsets, int assoc) {
+    cache = malloc(nsets * sizeof(CacheBlock*));
+
     for (int i = 0; i < nsets; i++) {
+        cache[i] = malloc(assoc * sizeof(CacheBlock));
+
         for (int j = 0; j < assoc; j++) {
-            cache[i][j].valid = 0;
-            cache[i][j].tag = 0;
-            cache[i][j].lru_counter = 0;
+            cache[i][j] = (CacheBlock){0,0,0};
         }
     }
 
