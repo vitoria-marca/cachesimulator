@@ -4,10 +4,14 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <stdint.h>
-#include <math.h>
 #include <time.h>
+static uint32_t ntohl(uint32_t x) {
+    return ((x & 0xFF) << 24) |
+           ((x & 0xFF00) << 8) |
+           ((x & 0xFF0000) >> 8) |
+           ((x & 0xFF000000) >> 24);
+}
 
 // Limites maximos para seguranca
 #define MAX_ASSOC 32
