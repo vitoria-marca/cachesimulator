@@ -23,30 +23,33 @@ typedef struct {
     uint32_t tag;          // tag do endereço
     int lru_counter;       // contador para FIFO ou LRU
 } CacheBlock;
-
-// Cache: uma matriz [nsets][associatividade]
-CacheBlock cache[MAX_SETS][MAX_ASSOC];
+CacheBlock **cache;
 
 typedef struct {
     uint32_t *tags;
     int size;
     int capacity;
 } VisitSet;
-
 VisitSet set_visitado;
 
-
 // Variáveis para estatísticas
-long int total_acessos = 0;
-long int hits = 0;
-long int miss_compulsorio = 0;
-long int miss_total = 0;
-long int *visitado = NULL; // vetor auxiliar para verificar misses compulsórios
-long int miss_conflito = 0;
-long int miss_capacidade = 0;
-long int blocos_validos = 0;
+long total_acessos = 0;
+long hits = 0;
+long miss_compulsorio = 0;
+long miss_total = 0;
+long miss_conflito = 0;
+long miss_capacidade = 0;
+long blocos_validos = 0;
 
-void miss (int index, uint32_t tag, int nsets, int assoc, char *substituicao);
+//Protótipo de funções
+int is_potencia2(int x);
+int log2int(int x);
+void inicializar_visitado();
+void liberar_visitado();
+void inicializar_cache(int nsets, int assoc);
+FILE* processar_arquivo(char *f);
+void simular_acesso_cache(uint32_t raw, int nsets, int bsize, int assoc, char *sub);
+void imprimir_estatisticas(int flag);
 
 void inicializar_visitado(){
     set_visitado.tags = (uint32_t*)malloc(100 * sizeof(uint32_t));
