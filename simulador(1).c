@@ -51,6 +51,11 @@ FILE* processar_arquivo(char *f);
 void simular_acesso_cache(uint32_t raw, int nsets, int bsize, int assoc, char *sub);
 void imprimir_estatisticas(int flag);
 
+//Corpo de funções
+int is_potencia2(int x) {
+    return x && !(x & (x - 1)); //operação bit a bit
+}
+
 void inicializar_visitado(){
     set_visitado.tags = (uint32_t*)malloc(100 * sizeof(uint32_t));
     set_visitado.capacity = 100;
