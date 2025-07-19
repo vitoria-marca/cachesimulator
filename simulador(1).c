@@ -53,7 +53,7 @@ void liberar_visitado();
 void inicializar_cache(int nsets, int assoc);
 FILE* processar_arquivo(char *f);
 void simular_acesso_cache(uint32_t _endereco, int nsets, int bsize, int assoc, char *sub);
-void imprimir_estatisticas(int flag);
+void imprimir_estatisticas(int flag, int flag_out);
 
 //Corpo de funções//
 ///////////////////
@@ -240,7 +240,7 @@ void simular_acesso_cache(uint32_t _endereco, int nsets, int bsize, int assoc, c
     cache[index][via].lru_counter = total_acessos;
 }
 
-void imprimir_estatisticas(int flag) {
+void imprimir_estatisticas(int flag, int flag_out) {
     double t_hit = (double)hits / total_acessos;
     double t_miss = (double)miss_total / total_acessos;
     double t_compu, t_confl, t_capac;
@@ -254,16 +254,36 @@ void imprimir_estatisticas(int flag) {
     }
     
     if (flag == 0) {
-        printf(
-            "Total: %ld hits: %ld misses: %ld comp: %ld confl: %ld cap: %ld\n",
+        if (flag_out == 0 || flag_out == 1){
+            printf(
+            "Total: %ld\n"
+            "hits: %ld \n"
+            "misses: %ld \n"
+            "compulsorios: %ld \n"
+            "conflito: %ld \n"
+            "capacidade: %ld\n",
             total_acessos,
             hits,
             miss_total,
             miss_compulsorio,
             miss_conflito,
-            miss_capacidade
-        );
-        printf("%%hit %.4f %%miss %.4f\n", t_hit, t_miss);
+            miss_capacidade);
+        } 
+        if (flag_out == 0 || flag_out == 2){
+            printf(" ");
+            printf("##### TAXAS ######\n");
+            printf(
+            "hit: %.4f \n"
+            "miss: %.4f \n"
+            "compulsorios: %.4f \n"
+            "conflito: %.4f \n"
+            "capacidade: %.4f \n",
+            t_hit,
+            t_miss,
+            t_compu,
+            t_confl,
+            t_capac);
+        } 
     } else {
         printf(
             "%ld %.4f %.4f %.4f %.4f %.4f\n",
@@ -315,7 +335,16 @@ int main (int argc, char *argv[]){
     }
 
     fclose(f);
-    imprimir_estatisticas(flag_saida);
+
+    int flag_out = 3;
+    if (!flag_saida){
+            printf(
+        "Exibir dados:\n"
+        "[1] - numeros absolutos  [2] - taxas    [0] - ambos\n");
+        scanf("%d", &flag_out);
+    }
+
+    imprimir_estatisticas(flag_saida, flag_out);
     liberar_visitado();
     // libera memória de cada set e da matriz
     for (int i = 0; i < nsets; i++) {
