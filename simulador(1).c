@@ -6,6 +6,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <time.h>
+
+//função fread (main) lê os bytes na ordem em que aparecem no arquivo
+//e arquiteturas Intel utilizam little-endian
 static uint32_t ntohl(uint32_t x) {
     return ((x & 0xFF) << 24) |
            ((x & 0xFF00) << 8) |
@@ -25,6 +28,7 @@ typedef struct {
 } CacheBlock;
 CacheBlock **cache;
 
+//estrutura que rastreia os pares (index, tag) já acessados
 typedef struct {
     uint32_t *tags;
     int size;
@@ -48,11 +52,12 @@ void inicializar_visitado();
 void liberar_visitado();
 void inicializar_cache(int nsets, int assoc);
 FILE* processar_arquivo(char *f);
-void simular_acesso_cache(uint32_t raw, int nsets, int bsize, int assoc, char *sub);
+void simular_acesso_cache(uint32_t _endereco, int nsets, int bsize, int assoc, char *sub);
 void imprimir_estatisticas(int flag);
 
 //Corpo de funções//
 ///////////////////
+
 int is_potencia2(int x) {
     return x && !(x & (x - 1)); //operação bit a bit
 }
@@ -60,11 +65,13 @@ int is_potencia2(int x) {
 int log2int(int x) {
     int r=0; 
     while (x>1) { 
-        x>>=1; r++; 
+        x>>=1; //divide por 2 (deslocando 1 bit à direita)
+        r++; 
     } 
     return r; 
 }
 
+//vetor de acessos que cresce dinamicamente
 void inicializar_visitado(){
     set_visitado.tags = malloc(100 * sizeof(uint32_t));
     set_visitado.capacity = 100;
@@ -75,6 +82,8 @@ void liberar_visitado(){
     free(set_visitado.tags);
 }
 
+//cache = nsets linhas x assoc colunas
+//blocos_validos = blocos preenchidos
 void inicializar_cache(int nsets, int assoc) {
     cache = malloc(nsets * sizeof(CacheBlock*));
 
@@ -85,7 +94,6 @@ void inicializar_cache(int nsets, int assoc) {
             cache[i][j] = (CacheBlock){0,0,0};
         }
     }
-
     blocos_validos = 0;
 }
 
@@ -102,15 +110,22 @@ FILE *processar_arquivo(char *arquivo_de_entrada){
     return fp;
 }
 
-void simular_acesso_cache(uint32_t endereco, int nsets, int bsize, int assoc, char *substituicao) {
+void simular_acesso_cache(uint32_t _endereco, int nsets, int bsize, int assoc, char *substituicao) {
     total_acessos++;
     
-    // calculo dos bits de offset, índice e tag
-    int offset_bits = log2int(bsize);
-    int index_bits = log2int(nsets);
-    uint32_t index = (endereco >> offset_bits) & (nsets - 1);
-    uint32_t tag = endereco >> (offset_bits + index_bits);
+    //inversão de bits para leitura correta dos endereços
+    uint32_t endereco = ntohl( _endereco );
 
+    // calculo dos bits de offset, índice e tag
+    //[ tag (restante dos bits) | index (log2(nsets)) | offset (log2(bsize)) ]
+    int offset_bits = log2int( bsize );
+    int index_bits  = log2int( nsets );
+    //remove os bits de offset para cálculo do índice
+    uint32_t index  = ( endereco >> offset_bits ) & ( nsets - 1 );
+    //remove os bits de índice e offset para cálculo de tag
+    uint32_t tag    = endereco >> (offset_bits + index_bits);
+
+    //verificação de hit    
     int hit = 0;
 
     for (int i = 0; i < assoc; i++){
@@ -118,78 +133,148 @@ void simular_acesso_cache(uint32_t endereco, int nsets, int bsize, int assoc, ch
             hits ++;
             hit = 1;
 
+            //atualiza contador de LRU
             if (substituicao[0] == 'L'){
                 cache[index][i].lru_counter = total_acessos;
+                break;
             }
+        }
+    }
+
+    if (hit) {
+        return;
+    }
+
+    //se não entrou no if anterior, é miss
+    miss_total++;
+    //chave para referenciar um bloco na cache (com 64 bits)
+    uint64_t chave = ((uint64_t)index<<32)|tag;
+    int novo = 1;
+    
+    //a chave já foi acessada antes?
+    for (int i = 0 ; i < set_visitado.size; i++){
+        if (set_visitado.size == set_visitado.capacity){
+            novo = 0;
             break;
         }
     }
 
-    if (!hit){
-        miss(index, tag, nsets, assoc, substituicao);
-    }
-}
-
-void miss (int index, uint32_t tag, int nsets, int assoc, char *substituicao){
-    miss_total ++;
-    int encontrado = 0;
-
-    for (int i = 0; i < set_visitado.size; i++){
-        if (set_visitado.tags[i] == tag){
-            encontrado = 1;
-            break;
-        }
-    }
-
-    if (!encontrado){
-        miss_compulsorio++;
+    //se não foi acessada:
+    if (novo){
         if (set_visitado.size == set_visitado.capacity){
             set_visitado.capacity *= 2;
-            set_visitado.tags = realloc (set_visitado.tags,
-                                        set_visitado.capacity * sizeof(uint32_t));
+            set_visitado.tags = realloc(
+                set_visitado.tags,
+                set_visitado.capacity * sizeof(uint64_t)
+            );
         }
-        set_visitado.tags[set_visitado.size++] = tag;
-    } else {
-        if (blocos_validos == nsets * assoc){
-            miss_capacidade ++;
+        //armazena a tag visitada
+        set_visitado.tags[set_visitado.size++] = chave;
+    }
+
+    //verificação se o conjunto está cheio
+    int set_cheio = 1;
+    for (int i = 0; i < assoc; i++){
+        if (!cache[index][i].valid){
+            set_cheio = 0;
+            break;
+        }
+    }
+
+    //classificação dos misses
+
+    if (novo){
+        if (!set_cheio){
+            miss_compulsorio++; //primeiro acesso e há vias livres
+        } else if (blocos_validos < (long)nsets*assoc){
+            miss_conflito++; // tag nova e set cheio, mas tem espaço na cache
         } else {
+            miss_capacidade++; //tag nova, set cheio e sem espaço na cache
+        }
+    } else {
+        if (set_cheio){
+            if (blocos_validos < (long)nsets*assoc){
+                miss_conflito++; //conflito pelo set estar cheio
+            } else {
+                miss_capacidade++; //cache cheia
+            }
+        } else {
+            //chave revista e set com espaço, ou seja, reutilização de via livre
             miss_conflito++;
         }
     }
 
-    int substituir_via = -1;
+    //SUBSTITUIÇÕES
 
+    int via = -1;
+
+    //procurando via livre
     for (int i = 0; i < assoc; i++){
-        if (!cache[index][i].valid){
-            substituir_via = i;
+        if (!cache[index][i].valid) {
+            via = i; //achou via livre
             break;
         }
     }
-
-    if (substituir_via == -1){
+    if (via < 0){ //não há via livre, então precisamos chamar as políticas de substituição
         if (substituicao[0] == 'R'){
-            substituir_via = rand() % assoc;
+            via = rand() % assoc;
+
         } else {
-            int min = cache[index][0].lru_counter;
-            substituir_via = 0;
+            via = 0; //procurar menor bloco com lru counter
             for (int i = 0; i < assoc; i++){
-                if (cache[index][i].lru_counter < min){
-                    min = cache[index][i].lru_counter;
-                    substituir_via = i;
+                if (cache[index][i].lru_counter < cache[index][via].lru_counter){
+                    via = i; //substituir via a ser substituída pelo menor lru counter
                 }
             }
         }
     }
 
-    int era_valido = cache[index][substituir_via].valid;
-    if (!era_valido){
+    // se a via estava livre, incrementa contagem de blocos válidos
+    if (!cache[index][via].valid) {
         blocos_validos++;
     }
 
-    cache[index][substituir_via].valid = 1;
-    cache[index][substituir_via].tag = tag;
-    cache[index][substituir_via].lru_counter = total_acessos;
+    // carrega novo bloco na via selecionada
+    cache[index][via].valid = 1;
+    cache[index][via].tag = tag;
+    cache[index][via].lru_counter = total_acessos;
+}
 
+void imprimir_estatisticas(int flag) {
+    double t_hit = (double)hits / total_acessos;
+    double t_miss = (double)miss_total / total_acessos;
+    double t_compu, t_confl, t_capac;
+
+    if (miss_total){
+        t_compu = (double)miss_compulsorio / miss_total;
+        t_confl = (double)miss_conflito / miss_total;
+        t_capac = (double)miss_capacidade / miss_total;
+    } else {
+        t_compu = t_confl = t_capac = 0;
+    }
+    
+    if (flag == 0) {
+        printf(
+            "Total: %ld hits: %ld misses: %ld comp: %ld confl: %ld cap: %ld\n",
+            total_acessos,
+            hits,
+            miss_total,
+            miss_compulsorio,
+            miss_conflito,
+            miss_capacidade
+        );
+        printf("%%hit %.4f %%miss %.4f\n", t_hit, t_miss);
+    } else {
+        printf(
+            "%ld %.4f %.4f %.4f %.4f %.4f\n",
+            total_acessos,
+            t_hit,
+            t_miss,
+            t_compu,
+            t_confl,
+            t_capac
+        );
+    }
 }
 
 int main (int argc, char *argv[]){
@@ -197,14 +282,14 @@ int main (int argc, char *argv[]){
     //se estiver faltando parâmetros, o programa fecha
     if (argc != 7){
 		printf("Numero de argumentos incorreto. Utilize:\n");
-		printf("./cache_simulator <nsets> <bsize> <assoc> <substituição> <flag_saida> arquivo_de_entrada\n");
+		printf("./cache_simulator.exe <nsets> <bsize> <assoc> <substituição> <flag_saida> arquivo_de_entrada\n");
 		return 1;
 	}
 
-    // Inicialização da função aleatória 
+    // inicialização da função aleatória 
     srand(time(NULL)); 
 
-    // Parâmetros vindos da linha de comando
+    // parâmetros vindos da linha de comando
     int nsets = atoi(argv[1]);
     int bsize = atoi(argv[2]);
     int assoc = atoi(argv[3]);
@@ -212,27 +297,31 @@ int main (int argc, char *argv[]){
     int flag_saida = atoi(argv[5]);
     char* arquivo_entrada = argv[6];   
 
-    // verificações quanto ao tamanho da cache
-    if (nsets > MAX_SETS) {
-        printf("Número de conjuntos excede o máximo permitido (%d)\n", MAX_SETS);
-        return 1;
-    }
-    if (assoc > MAX_ASSOC) {
-        printf("Associatividade excede o máximo permitido (%d)\n", MAX_ASSOC);
+    // verifica se todos os parâmetros são potências de 2
+    if (!is_potencia2(nsets) || !is_potencia2(bsize) || !is_potencia2(assoc)) {
+        fprintf(stderr, "Erro: nsets, bsize e assoc devem ser potências de 2.\n");
         return 1;
     }
 
-    // Confirmacao de dados
-    printf("nsets = %d\n", nsets);
-	printf("bsize = %d\n", bsize);
-	printf("assoc = %d\n", assoc);
-	printf("subst = %s\n", substituicao);
-	printf("flagOut = %d\n", flag_saida);
-	printf("arquivo = %s\n", arquivo_entrada);
-
-    FILE *arquivo_bin = processar_arquivo(arquivo_entrada);
+    FILE *f = processar_arquivo(arquivo_entrada);
 
     inicializar_cache(nsets, assoc);
+    inicializar_visitado();
 
+    uint32_t end;
+    // lê cada endereço de 32 bits e simula acesso
+    while (fread(&end, sizeof(end), 1, f) == 1) {
+        simular_acesso_cache(end, nsets, bsize, assoc, substituicao);
+    }
 
+    fclose(f);
+    imprimir_estatisticas(flag_saida);
+    liberar_visitado();
+    // libera memória de cada set e da matriz
+    for (int i = 0; i < nsets; i++) {
+        free(cache[i]);
+    }
+    free(cache);
+
+    return 0;
 }
