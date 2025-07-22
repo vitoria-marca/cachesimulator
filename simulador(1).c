@@ -38,7 +38,6 @@ int blocos_validos = 0;
 
 //Protótipo de funções
 int is_potencia2(int x);
-int log2int(int x);
 void inicializar_visitado();
 void liberar_visitado();
 void inicializar_cache(int nsets, int assoc);
@@ -66,7 +65,6 @@ uint32_t inverter_big_endian(uint32_t x) {
 
     return x;
 }
-
 int is_potencia2(int x) {
     if ( x <= 0 ){ // n < ou = 0 não é potencia de 2
         return 0;
@@ -81,30 +79,15 @@ int is_potencia2(int x) {
 
     return 1;
 }
-// Calcula log base 2 inteiro (pra bits)
-int log2int(int x) {
-
-    int resultado_log = 0;
-    
-    while ( x > 1 ){
-        x = x / 2;
-        resultado_log ++; //quantas divisões foram feitas
-    }
-
-    return resultado_log; 
-}
-
 //vetor de acessos que cresce dinamicamente
 void inicializar_visitado(){
     set_visitado.tags = malloc(100 * sizeof(uint32_t));
     set_visitado.capacity = 100;
     set_visitado.size = 0;
 }
-
 void liberar_visitado(){
     free(set_visitado.tags);
 }
-
 //cache = nsets linhas x assoc colunas
 //blocos_validos = blocos preenchidos
 void inicializar_cache(int nsets, int assoc) {
@@ -119,7 +102,6 @@ void inicializar_cache(int nsets, int assoc) {
     }
     blocos_validos = 0;
 }
-
 //Função para processar o nome do arquivo vindo do terminal e abri-lo em modo 
 //de leitura binária
 FILE *processar_arquivo(char *arquivo_de_entrada){
@@ -132,7 +114,6 @@ FILE *processar_arquivo(char *arquivo_de_entrada){
 
     return fp;
 }
-
 void simular_acesso_cache(uint32_t _endereco, int nsets, int bsize, int assoc, char *substituicao) {
     total_acessos++;
     
@@ -141,12 +122,11 @@ void simular_acesso_cache(uint32_t _endereco, int nsets, int bsize, int assoc, c
 
     // calculo dos bits de offset, índice e tag
     //[ tag (restante dos bits) | index (log2(nsets)) | offset (log2(bsize)) ]
-    int offset_bits = log2int( bsize );
-    int index_bits  = log2int( nsets );
-    //remove os bits de offset para cálculo do índice
-    uint32_t index  = ( endereco >> offset_bits ) & ( nsets - 1 );
-    //remove os bits de índice e offset para cálculo de tag
-    uint32_t tag    = endereco >> (offset_bits + index_bits);
+
+    uint32_t endereco_sem_offset = endereco / bsize;
+    uint32_t index = endereco_sem_offset % nsets;
+    uint32_t tag = endereco_sem_offset / nsets;
+    
 
     //verificação de hit    
     int hit = 0;
@@ -262,7 +242,6 @@ void simular_acesso_cache(uint32_t _endereco, int nsets, int bsize, int assoc, c
     cache[index][via].tag = tag;
     cache[index][via].lru_counter = total_acessos;
 }
-
 void imprimir_estatisticas(int flag, int flag_out) {
     double t_hit = (double)hits / total_acessos;
     double t_miss = (double)miss_total / total_acessos;
@@ -319,7 +298,6 @@ void imprimir_estatisticas(int flag, int flag_out) {
         );
     }
 }
-
 int main (int argc, char *argv[]){
     
     //se estiver faltando parâmetros, o programa fecha
