@@ -7,15 +7,6 @@
 #include <stdint.h>
 #include <time.h>
 
-//função fread (main) lê os bytes na ordem em que aparecem no arquivo
-//e arquiteturas Intel utilizam little-endian
-static uint32_t ntohl(uint32_t x) {
-    return ((x & 0xFF) << 24) |
-           ((x & 0xFF00) << 8) |
-           ((x & 0xFF0000) >> 8) |
-           ((x & 0xFF000000) >> 24);
-}
-
 // Limites maximos para seguranca
 #define MAX_ASSOC 32
 #define MAX_SETS 8192
@@ -54,9 +45,27 @@ void inicializar_cache(int nsets, int assoc);
 FILE* processar_arquivo(char *f);
 void simular_acesso_cache(uint32_t _endereco, int nsets, int bsize, int assoc, char *sub);
 void imprimir_estatisticas(int flag, int flag_out);
-
+uint32_t inverter_big_endian(uint32_t x);
 //Corpo de funções//
 ///////////////////
+
+//função fread (main) lê os bytes na ordem em que aparecem no arquivo (endiannes)
+//e arquiteturas Intel utilizam little-endian
+uint32_t inverter_big_endian(uint32_t x) {
+    unsigned char *bytes = (unsigned char*)&x;
+
+    unsigned char temp;
+
+    temp = bytes[0];
+    bytes[0] = bytes[3];
+    bytes[3] = temp;
+
+    temp = bytes[1];
+    bytes[1] = bytes[2];
+    bytes[2] = temp;
+
+    return x;
+}
 
 int is_potencia2(int x) {
     if ( x <= 0 ){ // n < ou = 0 não é potencia de 2
@@ -128,7 +137,7 @@ void simular_acesso_cache(uint32_t _endereco, int nsets, int bsize, int assoc, c
     total_acessos++;
     
     //inversão de bits para leitura correta dos endereços
-    uint32_t endereco = ntohl( _endereco );
+    uint32_t endereco = inverter_big_endian( _endereco );
 
     // calculo dos bits de offset, índice e tag
     //[ tag (restante dos bits) | index (log2(nsets)) | offset (log2(bsize)) ]
@@ -270,7 +279,7 @@ void imprimir_estatisticas(int flag, int flag_out) {
     if (flag == 0) {
         if (flag_out == 0 || flag_out == 1){
             printf(
-            "Total: %d\n"
+            "Total: %d \n"
             "hits: %d \n"
             "misses: %d \n"
             "compulsorios: %ld \n"
