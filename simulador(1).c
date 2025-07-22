@@ -59,7 +59,18 @@ void imprimir_estatisticas(int flag, int flag_out);
 ///////////////////
 
 int is_potencia2(int x) {
-    return x && !(x & (x - 1)); //operação bit a bit
+    if ( x <= 0 ){ // n < ou = 0 não é potencia de 2
+        return 0;
+    }
+
+    while ( x > 1 ){
+        if ( x % 2 != 0 ){
+            return 0; // resto = 0 não é potência de 2 
+        }
+        x = x / 2;
+    }
+
+    return 1;
 }
 // Calcula log base 2 inteiro (pra bits)
 int log2int(int x) {
