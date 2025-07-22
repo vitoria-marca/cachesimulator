@@ -74,12 +74,15 @@ int is_potencia2(int x) {
 }
 // Calcula log base 2 inteiro (pra bits)
 int log2int(int x) {
-    int r=0; 
-    while (x>1) { 
-        x>>=1; //divide por 2 (deslocando 1 bit à direita)
-        r++; 
-    } 
-    return r; 
+
+    int resultado_log = 0;
+    
+    while ( x > 1 ){
+        x = x / 2;
+        resultado_log ++; //quantas divisões foram feitas
+    }
+
+    return resultado_log; 
 }
 
 //vetor de acessos que cresce dinamicamente
