@@ -37,13 +37,13 @@ typedef struct {
 VisitSet set_visitado;
 
 // Variáveis para estatísticas
-long total_acessos = 0;
-long hits = 0;
-long miss_compulsorio = 0;
-long miss_total = 0;
-long miss_conflito = 0;
-long miss_capacidade = 0;
-long blocos_validos = 0;
+int total_acessos = 0;
+int hits = 0;
+int miss_compulsorio = 0;
+int miss_total = 0;
+int miss_conflito = 0;
+int miss_capacidade = 0;
+int blocos_validos = 0;
 
 //Protótipo de funções
 int is_potencia2(int x);
@@ -270,9 +270,9 @@ void imprimir_estatisticas(int flag, int flag_out) {
     if (flag == 0) {
         if (flag_out == 0 || flag_out == 1){
             printf(
-            "Total: %ld\n"
-            "hits: %ld \n"
-            "misses: %ld \n"
+            "Total: %d\n"
+            "hits: %d \n"
+            "misses: %d \n"
             "compulsorios: %ld \n"
             "conflito: %ld \n"
             "capacidade: %ld\n",
@@ -300,7 +300,7 @@ void imprimir_estatisticas(int flag, int flag_out) {
         } 
     } else {
         printf(
-            "%ld %.4f %.4f %.4f %.4f %.4f\n",
+            "%d %.4f %.4f %.4f %.4f %.4f\n",
             total_acessos,
             t_hit,
             t_miss,
