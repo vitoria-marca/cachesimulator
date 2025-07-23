@@ -7,11 +7,11 @@
 #include <stdint.h>
 #include <time.h>
 
-// Limites maximos para seguranca
+// limites maximos para seguranca
 #define MAX_ASSOC 32
 #define MAX_SETS 8192
 
-// Estrutura para representar cada bloco da cache
+// estrutura para representar cada bloco da cache
 typedef struct {
     int valid;             // 1 se o bloco é válido, 0 se não é
     uint32_t tag;          // tag do endereço
@@ -27,7 +27,7 @@ typedef struct {
 } VisitSet;
 VisitSet set_visitado;
 
-// Variáveis para estatísticas
+// variáveis para estatísticas
 int total_acessos = 0;
 int hits = 0;
 int miss_compulsorio = 0;
@@ -36,7 +36,7 @@ int miss_conflito = 0;
 int miss_capacidade = 0;
 int blocos_validos = 0;
 
-//Protótipo de funções
+//protótipo de funções
 int is_potencia2(int x);
 void inicializar_visitado();
 void liberar_visitado();
@@ -45,11 +45,11 @@ FILE* processar_arquivo(char *f);
 void simular_acesso_cache(uint32_t _endereco, int nsets, int bsize, int assoc, char *sub);
 void imprimir_estatisticas(int flag, int flag_out);
 uint32_t inverter_big_endian(uint32_t x);
-//Corpo de funções//
-///////////////////
 
-//função fread (main) lê os bytes na ordem em que aparecem no arquivo (endiannes)
-//e arquiteturas Intel utilizam little-endian
+//corpo de funções
+
+// função fread (main) lê os bytes na ordem em que aparecem no arquivo (big-endian)
+// e arquiteturas Intel utilizam little-endian (leem primeiro o byte menos significativo)
 uint32_t inverter_big_endian(uint32_t x) {
     unsigned char *bytes = (unsigned char*)&x;
 
@@ -102,7 +102,7 @@ void inicializar_cache(int nsets, int assoc) {
     }
     blocos_validos = 0;
 }
-//Função para processar o nome do arquivo vindo do terminal e abri-lo em modo 
+//função para processar o nome do arquivo vindo do terminal e abri-lo em modo 
 //de leitura binária
 FILE *processar_arquivo(char *arquivo_de_entrada){
     FILE *fp = fopen(arquivo_de_entrada, "rb");
@@ -120,11 +120,12 @@ void simular_acesso_cache(uint32_t _endereco, int nsets, int bsize, int assoc, c
     //inversão de bits para leitura correta dos endereços
     uint32_t endereco = inverter_big_endian( _endereco );
 
-    // calculo dos bits de offset, índice e tag
-    //[ tag (restante dos bits) | index (log2(nsets)) | offset (log2(bsize)) ]
-
+    // cálculo dos bits de offset, índice e tag
+    // desloca os bits para a direita, removendo o offset
     uint32_t endereco_sem_offset = endereco / bsize;
+    // o módulo separa os bits menos significativos = índice
     uint32_t index = endereco_sem_offset % nsets;
+    // o restante é o tag
     uint32_t tag = endereco_sem_offset / nsets;
     
 
